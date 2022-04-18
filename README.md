@@ -1,4 +1,4 @@
-# zeczec crawler
+# crawler zeczec 
 
 - time sleep 6 seconds
 - data select range 7 days
