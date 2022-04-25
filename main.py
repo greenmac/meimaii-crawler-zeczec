@@ -11,30 +11,31 @@ import requests
 now_date = datetime.now()
 now_date = datetime.strftime(now_date, '%Y%m%d')
 
+domain_url = 'https://www.zeczec.com/'
+
 def crawlerZeczecResults(time_sleep):
-    url = f'https://www.zeczec.com/'
     headers = {
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
     }
-    resp = requests.session().get(url, headers=headers)
+    resp = requests.session().get(domain_url, headers=headers)
     resp_result = resp.text
     soup = BeautifulSoup(resp_result, 'lxml')
     p_page = int(soup.select('.dib-ns')[5].get_text())+1
     
     projects_lists = []
     for i in range(1, p_page):
-        url = f'https://www.zeczec.com/?p_page={i}'
+        categories_url = domain_url+f'?p_page={i}'
         headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
         }
-        resp = requests.session().get(url, headers=headers)
+        resp = requests.session().get(categories_url, headers=headers)
         resp_result = resp.text
         soup = BeautifulSoup(resp_result, 'lxml')
 
         soup_1 = soup.select('.project')
         for i in soup_1:
             soup_2 = i.select('.db')[0]
-            projects_url = 'https://www.zeczec.com'+soup_2.get('href')
+            projects_url = domain_url+soup_2.get('href')
             age_checked_for_lists = ['11454', '11518']
             for age_checked_for in age_checked_for_lists:
                 check_exist_lists = checkExistLists()
@@ -56,7 +57,7 @@ def crawlerZeczecResults(time_sleep):
                         proposer = str(proposer[0].get_text()) if proposer else ''
                         
                         proposer_url = soup_sub.select('.b.f6')
-                        proposer_url = 'https://www.zeczec.com'+proposer_url[0].get('href') if proposer else ''
+                        proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
                                                 
                         achievement_rate = soup_sub.select('.stroke')
                         achievement_rate = achievement_rate[0].get_text().replace('\n', '') if achievement_rate else ''

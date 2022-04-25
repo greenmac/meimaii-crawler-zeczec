@@ -1,5 +1,6 @@
 # crawler zeczec 
 
+- domain_url = 'https://www.zeczec.com/'
 - time sleep 6 seconds
 - data select range 7 days
 
