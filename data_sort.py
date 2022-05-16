@@ -32,6 +32,8 @@ df.columns = columns_name
 df['集資開始'] = df['集資開始'].astype('datetime64[ns]')
 df['集資結束'] = df['集資結束'].astype('datetime64[ns]')
 df = df[df['集資開始']>=diff_date]
+limit_amount = 100000
+df = df[df['累積金額']>=limit_amount]
 # print(df.dtypes)
 df = df.sort_values(by=['累積金額', '產品單價'], ascending=[False, False])
 df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
