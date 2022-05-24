@@ -182,8 +182,38 @@ def getRecentlyZeczecProjects(time_sleep):
                 print(data)
 
         message = 'zeczec data is done !'
+    dataSort()
     print(message)
 
+def dataSort():
+    now_date = datetime.now()
+    diff_date = now_date-relativedelta(days=30)
+    now_date = datetime.strftime(now_date, '%Y%m%d')
+
+    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
+
+    '''中文欄位'''
+    columns_name = [
+        '集資項目',
+        '提案人',
+        '累積金額',
+        '產品單價',
+        '項目網址',
+        '項目規格',
+        '剩餘時間',
+        '集資期間',
+        '集資開始',
+        '集資結束',
+    ]
+
+    df.columns = columns_name
+    df['集資開始'] = df['集資開始'].astype('datetime64[ns]')
+    df['集資結束'] = df['集資結束'].astype('datetime64[ns]')
+    df = df[df['集資開始']>=diff_date]
+    limit_amount = 100000
+    df = df[df['累積金額']>=limit_amount]
+    df = df.sort_values(by=['累積金額', '產品單價'], ascending=[False, False])
+    df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
 
 if __name__ == '__main__':
     start_time = time.time()

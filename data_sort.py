@@ -9,7 +9,6 @@ now_date = datetime.now()
 diff_date = now_date-relativedelta(days=30)
 now_date = datetime.strftime(now_date, '%Y%m%d')
 # diff_date = datetime.strftime(diff_date, '%Y%m%d')
-print(diff_date)
 
 # df = pd.read_csv(f'./data/recently_zeczec_{now_date}.csv')
 df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
