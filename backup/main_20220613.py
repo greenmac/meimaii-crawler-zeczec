@@ -112,10 +112,6 @@ def crawlerZeczecResults(time_sleep):
     len_projects_lits = len(projects_lists)
     print('$'*40)
     print('len_projects_lits:', len_projects_lits)
-    
-    getRecentlyZeczecProjects()
-    dataSort()
-
     return projects_lists
 
 def checkExistLists():
@@ -128,8 +124,8 @@ def checkExistLists():
                 check_rows.append(row[4])
     return check_rows
 
-def getRecentlyZeczecProjects():
-    # crawlerZeczecResults(time_sleep)
+def getRecentlyZeczecProjects(time_sleep):
+    crawlerZeczecResults(time_sleep)
 
     with open(f'./data/zeczec_projects_{now_date}.csv', mode='r') as csv_file:
         data = list(csv.reader(csv_file))
@@ -186,7 +182,7 @@ def getRecentlyZeczecProjects():
                 print(data)
 
         message = 'zeczec data is done !'
-    # dataSort()
+    dataSort()
     print(message)
 
 def dataSort():
@@ -223,8 +219,7 @@ if __name__ == '__main__':
     start_time = time.time()
     print('start_time:', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-    # getRecentlyZeczecProjects(time_sleep=6)
-    crawlerZeczecResults(time_sleep=6)
+    getRecentlyZeczecProjects(time_sleep=6)
 
     print('&'*80)
     end_time = time.time()
