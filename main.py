@@ -11,20 +11,16 @@ import requests
 now_date = datetime.now()
 now_date = datetime.strftime(now_date, '%Y%m%d')
 
-domain_url = 'https://www.zeczec.com/'
+domain_url = 'https://www.zeczec.com'
 
 def crawlerZeczecResults(time_sleep):
     soup = getSoup(domain_url)
     page = soup.select(
-        '.container > .container > .text-center.mb5 > .button-group.mt3 > .button.button-s'
+        '.container > .container > .text-center.mb-16 > .button-group.mt-4 > .button.button-s'
     )
-    page = int(page[5].get_text())+1
-        
+    page = int(page[5].get_text())+1        
     for i in range(1, page):
-        categories_url = domain_url+f'?page={i}'
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
-        }
+        categories_url = domain_url+'/'+f'?page={i}'        
         getCrowdfundingInfo(categories_url, time_sleep)
     getRecentlyZeczecProjects()
     dataSort()
@@ -32,7 +28,7 @@ def crawlerZeczecResults(time_sleep):
 def getCrowdfundingInfo(categories_url, time_sleep):
     soup = getSoup(categories_url)
     soup_1 = soup.select(
-        '.container > .container > .flex.gutter3-l > .w-full > .black.project > .block'
+        '.container > .container > .flex.gutter3-l > .w-full > .text-black > .block'
     )
     for i in soup_1:
         projects_href = i.get('href')
@@ -60,13 +56,13 @@ def getCategoriesInfo(projects_url, time_sleep):
 def getProjectsInfo(projects_url, time_sleep, cookies):
         soup = getSoup(projects_url, cookies=cookies)
         
-        projects = soup.select('.f4.mt2.mb1')
+        projects = soup.select('.mt-2.mb-1')
         projects = projects[0].get_text() if projects else ''
         if projects:
-            proposer = soup.select('.font-bold.f6')
+            proposer = soup.select('.font-bold.text-sm')
             proposer = str(proposer[0].get_text()) if proposer else ''
             
-            proposer_url = soup.select('.font-bold.f6')
+            proposer_url = soup.select('.font-bold.text-sm')
             proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
                                     
             achievement_rate = soup.select('.stroke')
@@ -80,11 +76,11 @@ def getProjectsInfo(projects_url, time_sleep, cookies):
             target_amount = target_amount[0].find_next_siblings()[0].get_text().replace('\n', '') if target_amount else '' # 尋找 current_amount 的兄弟節點
             target_amount = int(''.join(re.findall('\d*', target_amount))) if '目標' in target_amount else target_amount # 如果要轉換純數字
 
-            current_price = soup.select('.black.font-bold.f4')
+            current_price = soup.select('.text-black.font-bold.text-xl')
             current_price = current_price[0].get_text() if current_price else ''
             current_price = int(''.join(re.findall('\d*', current_price))) # 如果要轉換純數字
 
-            spec = soup.select('.f6.gray.mv3')
+            spec = soup.select('.text-sm text-neutral-600 my-4 leading-relaxed')
             spec = spec[0].get_text()+',zeczec' if spec else ''
             
             number_of_sponsors = soup.select('.js-backers-count')
@@ -93,7 +89,7 @@ def getProjectsInfo(projects_url, time_sleep, cookies):
             remaining_time = soup.select('.js-time-left')
             remaining_time = remaining_time[0].get_text() if remaining_time else ''
             
-            group_period = soup.select('.mb2.f7')
+            group_period = soup.select('.mb-2.text-xs.leading-relaxed')
             group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
 
             projects_dict = {
@@ -220,7 +216,7 @@ def dataSort():
     df['集資開始'] = df['集資開始'].astype('datetime64[ns]')
     df['集資結束'] = df['集資結束'].astype('datetime64[ns]')
     df = df[df['集資開始']>=diff_date]
-    limit_amount = 100000
+    limit_amount = 500000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
     df = df.sort_values(by=['累積金額', '產品單價'], ascending=[False, False])
     df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
