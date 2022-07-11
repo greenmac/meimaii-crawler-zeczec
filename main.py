@@ -80,7 +80,7 @@ def getProjectsInfo(projects_url, time_sleep, cookies):
             current_price = current_price[0].get_text() if current_price else ''
             current_price = int(''.join(re.findall('\d*', current_price))) # 如果要轉換純數字
 
-            spec = soup.select('.text-sm text-neutral-600 my-4 leading-relaxed')
+            spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
             spec = spec[0].get_text()+',zeczec' if spec else ''
             
             number_of_sponsors = soup.select('.js-backers-count')
