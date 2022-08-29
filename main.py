@@ -193,10 +193,10 @@ def getRecentlyZeczecProjects():
 
 def dataSort():
     now_date = datetime.now()
-    diff_date = now_date-relativedelta(days=30)
+    diff_date = now_date-relativedelta(days=30) # 取30天內開團的商品
     now_date = datetime.strftime(now_date, '%Y%m%d')
 
-    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
+    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv', header=None)
 
     '''中文欄位'''
     columns_name = [
@@ -207,7 +207,7 @@ def dataSort():
         '項目網址',
         '項目規格',
         '剩餘時間',
-        '集資期間',
+        '集資期間(30天內開團的商品)',
         '集資開始',
         '集資結束',
     ]
@@ -215,10 +215,10 @@ def dataSort():
     df.columns = columns_name
     df['集資開始'] = df['集資開始'].astype('datetime64[ns]')
     df['集資結束'] = df['集資結束'].astype('datetime64[ns]')
-    df = df[df['集資開始']>=diff_date]
+    df = df[df['集資開始']>=diff_date] # 取30天內開團的商品
     limit_amount = 500000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
-    df = df.sort_values(by=['累積金額', '產品單價'], ascending=[False, False])
+    df = df.sort_values(by=['累積金額'], ascending=[False])
     df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
 
 if __name__ == '__main__':
