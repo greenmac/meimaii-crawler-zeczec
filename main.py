@@ -3,6 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from utils import timer
 import csv
+import logging
 import numpy as np
 import os
 import pandas as pd
@@ -10,8 +11,7 @@ import re
 import requests
 import time
 
-now_date = datetime.now()
-now_date = datetime.strftime(now_date, '%Y%m%d')
+now_date = datetime.strftime(datetime.now(), '%Y%m%d')
 
 domain_url = 'https://www.zeczec.com'
 
@@ -21,7 +21,7 @@ def crawler_zeczec_results(time_sleep):
     page = soup.select(
         '.container > .container > .text-center.mb-16 > .button-group.mt-4 > .button.button-s'
     )
-    page = int(page[5].get_text())+1        
+    page = int(page[5].get_text())+1
     for i in range(1, page):
         categories_url = domain_url+'/'+f'?page={i}'
         get_crowdfunding_info(categories_url, time_sleep)
@@ -51,67 +51,77 @@ def get_check_projects_url(projects_url, time_sleep):
         get_projects_info(projects_url, time_sleep)
             
 def get_projects_info(projects_url, time_sleep):
-    cookies = get_cookies(projects_url)
-    
-    soup = get_soup(projects_url, cookies=cookies)
-    
-    projects = soup.select('.mt-2.mb-1')
-    projects = projects[0].get_text() if projects else ''
+    try:
+        cookies = get_cookies(projects_url)
+        
+        soup = get_soup(projects_url, cookies=cookies)
+        
+        projects = soup.select('.mt-2.mb-1')
+        projects = projects[0].get_text() if projects else ''
 
-    proposer = soup.select('.font-bold.text-sm')
-    proposer = str(proposer[0].get_text()) if proposer else ''
-    
-    proposer_url = soup.select('.font-bold.text-sm')
-    proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
-                            
-    achievement_rate = soup.select('.stroke')
-    achievement_rate = achievement_rate[0].get_text().replace('\n', '') if achievement_rate else ''
-    
-    current_amount = soup.select('.js-sum-raised')
-    current_amount = current_amount[0].get_text() if current_amount else ''
-    current_amount = int(''.join(re.findall('\d*', current_amount))) if current_amount else '' # 如果要轉換純數字
-    
-    target_amount = soup.select('.js-sum-raised') # 尋找 current_amount 的兄弟節點
-    target_amount = target_amount[0].find_next_siblings()[0].get_text().replace('\n', '') if target_amount else '' # 尋找 current_amount 的兄弟節點
-    target_amount = int(''.join(re.findall('\d*', target_amount))) if '目標' in target_amount else target_amount # 如果要轉換純數字
+        proposer = soup.select('.font-bold.text-sm')
+        proposer = str(proposer[0].get_text()) if proposer else ''
+        
+        proposer_url = soup.select('.font-bold.text-sm')
+        proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
+                                
+        achievement_rate = soup.select('.stroke')
+        achievement_rate = achievement_rate[0].get_text().replace('\n', '') if achievement_rate else ''
+        
+        current_amount = soup.select('.js-sum-raised')
+        current_amount = current_amount[0].get_text() if current_amount else ''
+        current_amount = int(''.join(re.findall('\d*', current_amount))) if current_amount else '' # 如果要轉換純數字
+        
+        target_amount = soup.select('.js-sum-raised') # 尋找 current_amount 的兄弟節點
+        target_amount = target_amount[0].find_next_siblings()[0].get_text().replace('\n', '') if target_amount else '' # 尋找 current_amount 的兄弟節點
+        target_amount = int(''.join(re.findall('\d*', target_amount))) if '目標' in target_amount else target_amount # 如果要轉換純數字
 
-    current_price = soup.select('.text-black.font-bold.text-xl')
-    current_price = current_price[0].get_text() if current_price else ''
-    current_price = int(''.join(re.findall('\d*', current_price))) if current_price else ''# 如果要轉換純數字
+        current_price = soup.select('.text-black.font-bold.text-xl')
+        current_price = current_price[0].get_text() if current_price else ''
+        current_price = int(''.join(re.findall('\d*', current_price))) if current_price else ''# 如果要轉換純數字
 
-    spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
-    spec = spec[0].get_text()+',zeczec' if spec else ''
-    
-    number_of_sponsors = soup.select('.js-backers-count')
-    number_of_sponsors = number_of_sponsors[0].get_text() if number_of_sponsors else ''
-    
-    remaining_time = soup.select('.js-time-left')
-    remaining_time = remaining_time[0].get_text() if remaining_time else ''
-    
-    group_period = soup.select('.mb-2.text-xs.leading-relaxed')
-    group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
+        spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
+        spec = spec[0].get_text()+',zeczec' if spec else ''
+        
+        number_of_sponsors = soup.select('.js-backers-count')
+        number_of_sponsors = number_of_sponsors[0].get_text() if number_of_sponsors else ''
+        
+        remaining_time = soup.select('.js-time-left')
+        remaining_time = remaining_time[0].get_text() if remaining_time else ''
+        
+        group_period = soup.select('.mb-2.text-xs.leading-relaxed')
+        group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
 
-    projects_dict = {
-        'projects': projects,
-        'proposer': proposer,
-        'current_amount': current_amount,
-        'current_price': current_price,
-        'projects_url': projects_url,
-        'spec': spec,
-        'remaining_time': remaining_time,
-        'group_period': group_period,  
-        # 'proposer_url': proposer_url,
-        # 'achievement_rate': achievement_rate,
-        # 'target_amount': target_amount,
-        # 'number_of_sponsors': number_of_sponsors,
-    }
-    print('-'*10)
-    print(projects_dict)
-    filepath = f'./data/zeczec_projects_{now_date}.csv'
-    df = pd.DataFrame(data=projects_dict, index=[0])
-    df.to_csv(filepath, mode='a', header=False, index=False)
-    time.sleep(time_sleep)
-    return projects_dict
+        projects_dict = {
+            'projects': projects,
+            'proposer': proposer,
+            'current_amount': current_amount,
+            'current_price': current_price,
+            'projects_url': projects_url,
+            'spec': spec,
+            'remaining_time': remaining_time,
+            'group_period': group_period,  
+            # 'proposer_url': proposer_url,
+            # 'achievement_rate': achievement_rate,
+            # 'target_amount': target_amount,
+            # 'number_of_sponsors': number_of_sponsors,
+        }
+        print('-'*10)
+        print(projects_dict)
+        filepath = f'./data/zeczec_projects_{now_date}.csv'
+        df = pd.DataFrame(data=projects_dict, index=[0])
+        df.to_csv(filepath, mode='a', header=False, index=False)
+        time.sleep(time_sleep)
+        return projects_dict
+    except Exception as e:
+        logging.basicConfig(
+            level=logging.INFO, 
+            filename='./log/log_zeczec.txt', filemode='w',
+            format='[%(asctime)s] %(message)s', 
+            datefmt='%Y%m%d %H:%M:%S',
+        )
+        logging_message = f'projects_url:{projects_url}, {e}'
+        logging.error(msg=logging_message)
 
 def get_check_exist_list():
     filepath = f'./data/zeczec_projects_{now_date}.csv'
