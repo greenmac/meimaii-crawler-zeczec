@@ -29,7 +29,6 @@ def crawler_zeczec_results(time_sleep):
     get_df_add_header_to_csv()
     get_recently_zeczec_projects()
     data_sort()
-    amount_limit()
         
 def get_crowdfunding_info(categories_url, time_sleep):
     soup = get_soup(categories_url)
@@ -259,36 +258,5 @@ def data_sort():
     df = df.sort_values(by=['累積金額'], ascending=[False])
     df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
 
-def amount_limit():
-    now_date = datetime.now()
-    diff_date = now_date+relativedelta(days=1) # 取爬蟲當天內還開團的商品(日期比較要+1)
-    now_date = datetime.strftime(now_date, '%Y%m%d')
-
-    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
-
-    '''中文欄位'''
-    columns_name = [
-        '商品名稱',
-        '品牌名稱',
-        '累積金額',
-        '商品單價',
-        '商品網址',
-        '商品規格',
-        '剩餘時間',
-        f'集資期間({now_date} 截止)',
-        '集資開始',
-        '集資結束',
-    ]
-
-    df.columns = columns_name
-    df['集資結束'] = df['集資結束'].astype('datetime64[ns]')
-    df = df[df['集資結束']>=diff_date] # 取爬蟲當天內還開團的商品
-    limit_amount = 5000000 # 限制多少金額才列出
-    df = df[df['累積金額']>=limit_amount]
-    df = df.sort_values(by=['累積金額'], ascending=[False])
-    df.to_csv(f'./data/amount_limit_zeczec_{now_date}.csv', mode='w', index=False)
-
 if __name__ == '__main__':    
-    crawler_zeczec_results(time_sleep=9)
-    # get_projects_info('https://www.zeczec.com/projects/reo', 0)
-    # amount_limit()
+    crawler_zeczec_results(time_sleep=6)
