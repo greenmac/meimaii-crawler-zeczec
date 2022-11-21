@@ -18,39 +18,24 @@ domain_url = 'https://www.zeczec.com'
 @timer
 def crawler_zeczec_results(time_sleep):
     soup = get_soup(domain_url)
-
-    # 群眾集資
-    page = soup.select('.container > .container > .text-center.mb-16 > .button-group.mt-4 > .button.button-s')
+    page = soup.select(
+        '.container > .container > .text-center.mb-16 > .button-group.mt-4 > .button.button-s'
+    )
     page = int(page[5].get_text())+1
-    for i in range(1, page)[0:2]:
-        crowdfunding_url = domain_url+'/'+f'?page={i}'
-        get_crowdfunding_info(crowdfunding_url, time_sleep)
-
-    # 預購式專案
-    p_page = soup.select('.border-t > .container > .text-center.mb-16 > .button-group.mt-4')[0]
-    p_page = p_page.select('.button.button-s')
-    p_page = int(p_page[5].get_text())+1
-    for i in range(1, p_page)[0:2]:
-        pre_order_url = domain_url+'/'+f'?p_page={i}'
-        get_pre_order_info(pre_order_url, time_sleep)
+    for i in range(1, page):
+        categories_url = domain_url+'/'+f'?page={i}'
+        get_crowdfunding_info(categories_url, time_sleep)
 
     get_df_add_header_to_csv()
     get_recently_zeczec_projects()
     data_sort()
     amount_limit()
         
-def get_crowdfunding_info(crowdfunding_url, time_sleep):
-    soup = get_soup(crowdfunding_url)
-    projects_url_list = soup.select('.container > .container > .flex.gutter3-l > .w-full > .text-black > .block')
-    for i in projects_url_list:        
-        projects_href = i.get('href')
-        projects_url = domain_url+projects_href
-        get_check_projects_url(projects_url, time_sleep)
-
-def get_pre_order_info(pre_order_url, time_sleep):
-    soup = get_soup(pre_order_url)
-    projects_url_list = soup.select('.border-t > .container > .flex.gutter3-l')[0]
-    projects_url_list = projects_url_list.select('.w-full > .text-black > .block')
+def get_crowdfunding_info(categories_url, time_sleep):
+    soup = get_soup(categories_url)
+    projects_url_list = soup.select(
+        '.container > .container > .flex.gutter3-l > .w-full > .text-black > .block'
+    )
     for i in projects_url_list:        
         projects_href = i.get('href')
         projects_url = domain_url+projects_href
@@ -161,7 +146,7 @@ def get_cookies(url):
     soup = get_soup(url)
     projects = soup.select('.mt-2.mb-1')
     projects = projects[0].get_text() if projects else ''
-    age_checked_for = '' if projects else '12925' if projects else '10649'
+    age_checked_for = '' if projects else '12925'
     return {'age_checked_for' : age_checked_for}
 
 def get_recently_zeczec_projects():
@@ -222,6 +207,11 @@ def get_recently_zeczec_projects():
     filepath_recently = f'./data/recently_zeczec_{now_date}.csv'
     df_recently = pd.DataFrame(data=recently_zeczec_data)
     df_recently.to_csv(filepath_recently, mode='w', index=False)
+    
+    print('@'*30)
+    print(f'latest_all_zeczec_data:{latest_all_zeczec_data}')
+    print('@'*30)    
+    print(message)
 
 def get_df_add_header_to_csv():
     columns_name = [
@@ -236,11 +226,7 @@ def get_df_add_header_to_csv():
     ]
     file_path = f'./data/zeczec_projects_{now_date}.csv'
     df = pd.read_csv(file_path, header=None)
-    df_temp = df[0:1][0].values
-    if 'projects' in df_temp:
-        df = pd.read_csv(file_path)
-    if 'projects' not in df_temp:
-        df.columns = columns_name
+    df.columns = columns_name
     df.to_csv(file_path, index=False)
 
 def data_sort():
