@@ -35,6 +35,7 @@ def crawler_zeczec_results(time_sleep):
         get_pre_order_info(pre_order_url, time_sleep)
 
     get_df_add_header_to_csv()
+    get_recently_zeczec_projects()
     data_sort()
     amount_limit()
         
@@ -106,13 +107,7 @@ def get_projects_info(projects_url, time_sleep):
         
         group_period = soup.select('.mb-2.text-xs.leading-relaxed')
         group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
-                
-        group_period_lists = group_period.split(' – ') if group_period else ''
 
-        group_period_start = group_period_lists[0]+':00' if group_period_lists else ''
-        
-        group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
-        
         projects_dict = {
             'projects': projects,
             'proposer': proposer,
@@ -121,9 +116,7 @@ def get_projects_info(projects_url, time_sleep):
             'projects_url': projects_url,
             'spec': spec,
             'remaining_time': remaining_time,
-            'group_period': group_period,
-            'group_period_start': group_period_start,
-            'group_period_end': group_period_end,
+            'group_period': group_period,  
             # 'proposer_url': proposer_url,
             # 'achievement_rate': achievement_rate,
             # 'target_amount': target_amount,
@@ -131,7 +124,7 @@ def get_projects_info(projects_url, time_sleep):
         }
         print('-'*10)
         print(projects_dict)
-        filepath = f'./data/recently_zeczec_{now_date}.csv'
+        filepath = f'./data/zeczec_projects_{now_date}.csv'
         df = pd.DataFrame(data=projects_dict, index=[0])
         df.to_csv(filepath, mode='a', header=False, index=False)
         time.sleep(time_sleep)
@@ -147,7 +140,7 @@ def get_projects_info(projects_url, time_sleep):
         logging.error(msg=logging_message)
 
 def get_check_exist_list():
-    filepath = f'./data/recently_zeczec_{now_date}.csv'
+    filepath = f'./data/zeczec_projects_{now_date}.csv'
     check_rows = []
     if os.path.isfile(filepath):
         with open(filepath, 'r', encoding="utf-8", newline='') as csvfile:
@@ -168,8 +161,67 @@ def get_cookies(url):
     soup = get_soup(url)
     projects = soup.select('.mt-2.mb-1')
     projects = projects[0].get_text() if projects else ''
-    age_checked_for = '' if projects else '12925' if projects else '10649' if projects else '13819'
+    age_checked_for = '' if projects else '12925' if projects else '10649'
     return {'age_checked_for' : age_checked_for}
+
+def get_recently_zeczec_projects():
+    file_path = f'./data/zeczec_projects_{now_date}.csv'
+    df = pd.read_csv(file_path).replace({np.nan:None})
+    df_dict_list = df.to_dict('records')    
+
+    data_list = []
+    for i in df_dict_list:
+        projects = i['projects']
+        proposer = i['proposer']
+        current_amount = i['current_amount']
+        current_price = i['current_price']
+        projects_url = i['projects_url']
+        spec = i['spec']
+        remaining_time = i['remaining_time']
+        group_period = i['group_period']
+        group_period_lists = group_period.split(' – ') if group_period else ''
+        group_period_start = group_period_lists[0].replace('開始於', '')+':00' if group_period_lists else ''
+        group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
+        data_list.append({
+            'projects': projects,
+            'proposer': proposer,
+            'current_amount': current_amount,
+            'current_price': current_price,
+            'projects_url': projects_url,
+            'spec': spec,
+            'remaining_time': remaining_time,
+            'group_period': group_period,
+            'group_period_start': group_period_start,
+            'group_period_end': group_period_end,
+        })
+        
+    data_list_sort = sorted(data_list, key=lambda k:k['group_period_start'], reverse=True)
+    message = 'The zeczec data does not conform !'
+    latest_all_zeczec_data = []
+    recently_zeczec_data = []
+    for data in data_list_sort:
+        now_time = datetime.now()
+        gap_time = now_time-relativedelta(days=7)
+        # gap_time = datetime.strptime('2022/03/29 00:00:00', '%Y/%m/%d %H:%M:%S') # 如果要手動選擇某個日期開始
+        
+        group_period_start = data['group_period_start']
+        group_period_start = datetime.strptime(group_period_start, '%Y/%m/%d %H:%M:%S') if group_period_start else ''
+        group_period_end = data['group_period_end']
+        group_period_end = datetime.strptime(group_period_end, '%Y/%m/%d %H:%M:%S') if group_period_end else ''
+        
+        latest_all_zeczec_data.append(data)
+        if group_period_end and gap_time<=group_period_start:
+            recently_zeczec_data.append(data)
+
+        message = 'The zeczec data is done !'
+        
+    filepath_latest = f'./data/latest_all_zeczec_{now_date}.csv'
+    df_latest = pd.DataFrame(data=latest_all_zeczec_data)
+    df_latest.to_csv(filepath_latest, mode='w', index=False)
+
+    filepath_recently = f'./data/recently_zeczec_{now_date}.csv'
+    df_recently = pd.DataFrame(data=recently_zeczec_data)
+    df_recently.to_csv(filepath_recently, mode='w', index=False)
 
 def get_df_add_header_to_csv():
     columns_name = [
@@ -180,11 +232,9 @@ def get_df_add_header_to_csv():
         'projects_url',
         'spec',
         'remaining_time',
-        'group_period',
-        'group_period_start',
-        'group_period_end',
+        'group_period',  
     ]
-    file_path = f'./data/recently_zeczec_{now_date}.csv'
+    file_path = f'./data/zeczec_projects_{now_date}.csv'
     df = pd.read_csv(file_path, header=None)
     df_temp = df[0:1][0].values
     if 'projects' in df_temp:
@@ -195,12 +245,10 @@ def get_df_add_header_to_csv():
 
 def data_sort():
     now_date = datetime.now()
-    diff_date = datetime.strftime(now_date-relativedelta(days=30), '%Y-%m-%d')+' 23:59:59' # 取30天內開團的商品, 設定到 YYYY-mm-dd 23:59:59
-    diff_date = datetime.strptime(diff_date, '%Y-%m-%d %H:%M:%S')
-
+    diff_date = now_date-relativedelta(days=30) # 取30天內開團的商品
     now_date = datetime.strftime(now_date, '%Y%m%d')
 
-    df = pd.read_csv(f'./data/recently_zeczec_{now_date}.csv')
+    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
 
     '''中文欄位'''
     columns_name = [
@@ -227,11 +275,10 @@ def data_sort():
 
 def amount_limit():
     now_date = datetime.now()
-    diff_date = datetime.strftime(now_date, '%Y-%m-%d')+' 23:59:59' # 取爬蟲當天內還開團的商品, 設定到 YYYY-mm-dd 23:59:59
-    diff_date = datetime.strptime(diff_date, '%Y-%m-%d %H:%M:%S')
+    diff_date = now_date+relativedelta(days=1) # 取爬蟲當天內還開團的商品(日期比較要+1)
     now_date = datetime.strftime(now_date, '%Y%m%d')
 
-    df = pd.read_csv(f'./data/recently_zeczec_{now_date}.csv')
+    df = pd.read_csv(f'./data/latest_all_zeczec_{now_date}.csv')
 
     '''中文欄位'''
     columns_name = [
@@ -257,4 +304,5 @@ def amount_limit():
 
 if __name__ == '__main__':    
     crawler_zeczec_results(time_sleep=9)
-    
+    # get_projects_info('https://www.zeczec.com/projects/reo', 0)
+    # amount_limit()
