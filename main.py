@@ -67,9 +67,7 @@ def get_check_projects_url(projects_url, time_sleep):
             
 def get_projects_info(projects_url, time_sleep):
     try:
-        cookies = get_cookies(projects_url)
-        
-        soup = get_soup(projects_url, cookies=cookies)
+        soup = get_cookies_soup(projects_url)
         
         projects = soup.select('.mt-2.mb-1')
         projects = projects[0].get_text() if projects else ''
@@ -113,6 +111,13 @@ def get_projects_info(projects_url, time_sleep):
         
         group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
         
+        last_week_date = datetime.date(datetime.now())-relativedelta(days=7)
+        last_week_date = datetime.strftime(last_week_date, '%Y%m%d')
+        df_last_week = pd.read_csv(f'./data/recently_zeczec_{last_week_date}.csv')
+        df_last_week_url_list = df_last_week.values.tolist()
+        df_last_week_url_list = [i[4] for i in df_last_week_url_list]
+        new_product = '✅' if projects_url not in df_last_week_url_list else ''
+        
         projects_dict = {
             'projects': projects,
             'proposer': proposer,
@@ -124,6 +129,7 @@ def get_projects_info(projects_url, time_sleep):
             'group_period': group_period,
             'group_period_start': group_period_start,
             'group_period_end': group_period_end,
+            'new_product': new_product,
             # 'proposer_url': proposer_url,
             # 'achievement_rate': achievement_rate,
             # 'target_amount': target_amount,
@@ -160,16 +166,20 @@ def get_soup(url, cookies=None):
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
     }
     resp = requests.session().get(url, headers=headers, cookies=cookies)
-    resp_results = resp.text 
+    resp_results = resp.text
     soup = BeautifulSoup(resp_results, 'lxml')
+    if cookies:
+        time.sleep(3) # 如果cookies 有傳值進來的話，停頓秒數設置
     return soup
 
-def get_cookies(url):
-    soup = get_soup(url)
-    projects = soup.select('.mt-2.mb-1')
-    projects = projects[0].get_text() if projects else ''
-    age_checked_for = '' if projects else '12925' if projects else '10649' if projects else '13819'
-    return {'age_checked_for' : age_checked_for}
+def get_cookies_soup(url):
+    age_checked_for_list = ['', '12925', '10649', '13819']
+    for age_checked_for in age_checked_for_list:
+        soup = get_soup(url, cookies={'age_checked_for': age_checked_for})
+        projects = soup.select('.mt-2.mb-1') if soup else ''
+        if projects:
+            return soup
+    return get_soup(url)
 
 def get_df_add_header_to_csv():
     columns_name = [
@@ -183,6 +193,7 @@ def get_df_add_header_to_csv():
         'group_period',
         'group_period_start',
         'group_period_end',
+        'new_product',
     ]
     file_path = f'./data/recently_zeczec_{now_date}.csv'
     df = pd.read_csv(file_path, header=None)
@@ -214,6 +225,7 @@ def data_sort():
         '集資期間(30天內開團的商品)',
         '集資開始',
         '集資結束',
+        '新品入榜',
     ]
 
     df.columns = columns_name
@@ -222,7 +234,7 @@ def data_sort():
     df = df[df['集資開始']>=diff_date] # 取30天內開團的商品
     limit_amount = 500000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
-    df = df.sort_values(by=['累積金額'], ascending=[False])
+    df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
     df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
 
 def amount_limit():
@@ -245,6 +257,7 @@ def amount_limit():
         f'集資期間({now_date} 截止)',
         '集資開始',
         '集資結束',
+        '新品入榜',
     ]
 
     df.columns = columns_name
@@ -252,7 +265,7 @@ def amount_limit():
     df = df[df['集資結束']>=diff_date] # 取爬蟲當天內還開團的商品
     limit_amount = 5000000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
-    df = df.sort_values(by=['累積金額'], ascending=[False])
+    df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
     df.to_csv(f'./data/amount_limit_zeczec_{now_date}.csv', mode='w', index=False)
 
 if __name__ == '__main__':    
