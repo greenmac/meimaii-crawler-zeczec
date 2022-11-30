@@ -130,10 +130,10 @@ def get_projects_info(projects_url, time_sleep):
             'group_period_start': group_period_start,
             'group_period_end': group_period_end,
             'new_product': new_product,
-            # 'proposer_url': proposer_url,
-            # 'achievement_rate': achievement_rate,
-            # 'target_amount': target_amount,
-            # 'number_of_sponsors': number_of_sponsors,
+            # 'proposer_url': proposer_url, # 暫時不顯示
+            # 'achievement_rate': achievement_rate, # 暫時不顯示
+            # 'target_amount': target_amount, # 暫時不顯示
+            # 'number_of_sponsors': number_of_sponsors, # 暫時不顯示
         }
         print('-'*10)
         print(projects_dict)
