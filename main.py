@@ -173,12 +173,14 @@ def get_soup(url, cookies=None):
     return soup
 
 def get_cookies_soup(url):
-    age_checked_for_list = ['', '12925', '10649', '13819']
+    age_checked_for_list = ['', '12925', '10649', '13819', '14047']
     for age_checked_for in age_checked_for_list:
         soup = get_soup(url, cookies={'age_checked_for': age_checked_for})
         projects = soup.select('.mt-2.mb-1') if soup else ''
         if projects:
             return soup
+        else:
+            time.sleep(6)
     return get_soup(url)
 
 def get_df_add_header_to_csv():
