@@ -13,6 +13,9 @@ import time
 
 now_date = datetime.strftime(datetime.now(), '%Y%m%d')
 
+web_name = 'zeczec'
+file_path = f'./data/recently_{web_name}_{now_date}.csv'
+
 domain_url = 'https://www.zeczec.com'
 
 @timer
@@ -113,7 +116,7 @@ def get_projects_info(projects_url, time_sleep):
         
         last_week_date = datetime.date(datetime.now())-relativedelta(days=7)
         last_week_date = datetime.strftime(last_week_date, '%Y%m%d')
-        df_last_week = pd.read_csv(f'./data/recently_zeczec_{last_week_date}.csv')
+        df_last_week = pd.read_csv(f'./data/recently_{web_name}_{last_week_date}.csv')
         df_last_week_url_list = df_last_week.values.tolist()
         df_last_week_url_list = [i[4] for i in df_last_week_url_list]
         new_product = '✅' if projects_url not in df_last_week_url_list else ''
@@ -137,15 +140,14 @@ def get_projects_info(projects_url, time_sleep):
         }
         print('-'*10)
         print(projects_dict)
-        filepath = f'./data/recently_zeczec_{now_date}.csv'
         df = pd.DataFrame(data=projects_dict, index=[0])
-        df.to_csv(filepath, mode='a', header=False, index=False)
+        df.to_csv(file_path, mode='a', header=False, index=False)
         time.sleep(time_sleep)
         return projects_dict
     except Exception as e:
         logging.basicConfig(
             level=logging.INFO, 
-            filename='./log/log_zeczec.txt', filemode='w',
+            filename=f'./log/log_{web_name}.txt', filemode='w',
             format='[%(asctime)s] %(message)s', 
             datefmt='%Y%m%d %H:%M:%S',
         )
@@ -153,10 +155,9 @@ def get_projects_info(projects_url, time_sleep):
         logging.error(msg=logging_message)
 
 def get_check_exist_list():
-    filepath = f'./data/recently_zeczec_{now_date}.csv'
     check_rows = []
-    if os.path.isfile(filepath):
-        with open(filepath, 'r', encoding="utf-8", newline='') as csvfile:
+    if os.path.isfile(file_path):
+        with open(file_path, 'r', encoding="utf-8", newline='') as csvfile:
             rows = list(csv.reader(csvfile))
             check_rows = [row[4] for row in rows]
     return check_rows
@@ -173,7 +174,7 @@ def get_soup(url, cookies=None):
     return soup
 
 def get_cookies_soup(url):
-    age_checked_for_list = ['', '12925', '10649', '13819', '14047']
+    age_checked_for_list = ['', '14118', '12925', '10649', '13819', '14047']
     for age_checked_for in age_checked_for_list:
         soup = get_soup(url, cookies={'age_checked_for': age_checked_for})
         projects = soup.select('.mt-2.mb-1') if soup else ''
@@ -197,7 +198,6 @@ def get_df_add_header_to_csv():
         'group_period_end',
         'new_product',
     ]
-    file_path = f'./data/recently_zeczec_{now_date}.csv'
     df = pd.read_csv(file_path, header=None)
     df_temp = df[0:1][0].values
     if 'projects' in df_temp:
@@ -213,7 +213,7 @@ def data_sort():
 
     now_date = datetime.strftime(now_date, '%Y%m%d')
 
-    df = pd.read_csv(f'./data/recently_zeczec_{now_date}.csv')
+    df = pd.read_csv(file_path)
 
     '''中文欄位'''
     columns_name = [
@@ -237,7 +237,7 @@ def data_sort():
     limit_amount = 500000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
     df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
-    df.to_csv(f'./data/data_sort_zeczec_{now_date}.csv', mode='w', index=False)
+    df.to_csv(f'./data/data_sort_{web_name}_{now_date}.csv', mode='w', index=False)
 
 def amount_limit():
     now_date = datetime.now()
@@ -245,7 +245,7 @@ def amount_limit():
     diff_date = datetime.strptime(diff_date, '%Y-%m-%d %H:%M:%S')
     now_date = datetime.strftime(now_date, '%Y%m%d')
 
-    df = pd.read_csv(f'./data/recently_zeczec_{now_date}.csv')
+    df = pd.read_csv(file_path)
 
     '''中文欄位'''
     columns_name = [
@@ -268,7 +268,7 @@ def amount_limit():
     limit_amount = 5000000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
     df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
-    df.to_csv(f'./data/amount_limit_zeczec_{now_date}.csv', mode='w', index=False)
+    df.to_csv(f'./data/amount_limit_{web_name}_{now_date}.csv', mode='w', index=False)
 
 if __name__ == '__main__':    
     crawler_zeczec_results(time_sleep=9)
