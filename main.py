@@ -181,7 +181,7 @@ def get_cookies_soup(url):
         if projects:
             return soup
         else:
-            time.sleep(6)
+            time.sleep(9)
     return get_soup(url)
 
 def get_df_add_header_to_csv():
