@@ -69,6 +69,82 @@ def get_check_projects_url(projects_url, time_sleep):
         get_projects_info(projects_url, time_sleep)
             
 def get_projects_info(projects_url, time_sleep):
+    soup = get_cookies_soup(projects_url)
+    
+    projects = soup.select('.mt-2.mb-1')
+    projects = projects[0].get_text() if projects else ''
+
+    proposer = soup.select('.font-bold.text-sm')
+    proposer = str(proposer[0].get_text()) if proposer else ''
+    
+    proposer_url = soup.select('.font-bold.text-sm')
+    proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
+                            
+    achievement_rate = soup.select('.stroke')
+    achievement_rate = achievement_rate[0].get_text().replace('\n', '') if achievement_rate else ''
+    
+    current_amount = soup.select('.js-sum-raised')
+    current_amount = current_amount[0].get_text() if current_amount else ''
+    current_amount = int(''.join(re.findall('\d*', current_amount))) if current_amount else '' # 如果要轉換純數字
+    
+    target_amount = soup.select('.js-sum-raised') # 尋找 current_amount 的兄弟節點
+    target_amount = target_amount[0].find_next_siblings()[0].get_text().replace('\n', '') if target_amount else '' # 尋找 current_amount 的兄弟節點
+    target_amount = int(''.join(re.findall('\d*', target_amount))) if '目標' in target_amount else target_amount # 如果要轉換純數字
+
+    current_price = soup.select('div.text-black.font-bold.text-xl')
+    current_price = current_price[0].get_text().strip().split('\n')[0] if current_price else ''
+    current_price = int(''.join(re.findall('\d*', current_price))) if current_price else ''# 如果要轉換純數字
+
+    spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
+    spec = spec[0].get_text()+',zeczec' if spec else ''
+    
+    number_of_sponsors = soup.select('.js-backers-count')
+    number_of_sponsors = number_of_sponsors[0].get_text() if number_of_sponsors else ''
+    
+    remaining_time = soup.select('.js-time-left')
+    remaining_time = remaining_time[0].get_text() if remaining_time else ''
+    
+    group_period = soup.select('.mb-2.text-xs.leading-relaxed')
+    group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
+            
+    group_period_lists = group_period.split(' – ') if group_period else ''
+
+    group_period_start = group_period_lists[0]+':00' if group_period_lists else ''
+    
+    group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
+    
+    last_week_date = datetime.date(datetime.now())-relativedelta(days=7)
+    last_week_date = datetime.strftime(last_week_date, '%Y%m%d')
+    df_last_week = pd.read_csv(f'./data/recently_{web_name}_{last_week_date}.csv')
+    df_last_week_url_list = df_last_week.values.tolist()
+    df_last_week_url_list = [i[4] for i in df_last_week_url_list]
+    new_product = '✅' if projects_url not in df_last_week_url_list else ''
+    
+    projects_dict = {
+        'projects': projects,
+        'proposer': proposer,
+        'current_amount': current_amount,
+        'current_price': current_price,
+        'projects_url': projects_url,
+        'spec': spec,
+        'remaining_time': remaining_time,
+        'group_period': group_period,
+        'group_period_start': group_period_start,
+        'group_period_end': group_period_end,
+        'new_product': new_product,
+        # 'proposer_url': proposer_url, # 暫時不顯示
+        # 'achievement_rate': achievement_rate, # 暫時不顯示
+        # 'target_amount': target_amount, # 暫時不顯示
+        # 'number_of_sponsors': number_of_sponsors, # 暫時不顯示
+    }
+    print('-'*10)
+    print(projects_dict)
+    df = pd.DataFrame(data=projects_dict, index=[0])
+    df.to_csv(file_path, mode='a', header=False, index=False)
+    time.sleep(time_sleep)
+    return projects_dict
+
+def get_projects_info_logging(projects_url, time_sleep): # 如果需要用log取代錯誤訊息，要把 get_projects_info(projects_url, time_sleep) 取代掉
     try:
         soup = get_cookies_soup(projects_url)
         
@@ -92,8 +168,8 @@ def get_projects_info(projects_url, time_sleep):
         target_amount = target_amount[0].find_next_siblings()[0].get_text().replace('\n', '') if target_amount else '' # 尋找 current_amount 的兄弟節點
         target_amount = int(''.join(re.findall('\d*', target_amount))) if '目標' in target_amount else target_amount # 如果要轉換純數字
 
-        current_price = soup.select('.text-black.font-bold.text-xl')
-        current_price = current_price[0].get_text() if current_price else ''
+        current_price = soup.select('div.text-black.font-bold.text-xl')
+        current_price = current_price[0].get_text().strip().split('\n')[0] if current_price else ''
         current_price = int(''.join(re.findall('\d*', current_price))) if current_price else ''# 如果要轉換純數字
 
         spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
@@ -272,4 +348,5 @@ def amount_limit():
 
 if __name__ == '__main__':    
     crawler_zeczec_results(time_sleep=9)
+    # get_projects_info('https://www.zeczec.com/projects/esensepro', 0)
     
