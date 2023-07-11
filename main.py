@@ -1,7 +1,9 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from selenium import webdriver
 from utils import timer
+from zenrows import ZenRowsClient
 import csv
 import logging
 import numpy as np
@@ -11,19 +13,25 @@ import re
 import requests
 import time
 
-now_date = datetime.strftime(datetime.now(), '%Y%m%d')
-last_week_date = datetime.date(datetime.now())-relativedelta(days=7)
-last_week_date = datetime.strftime(last_week_date, '%Y%m%d')
+today = datetime.now()
+current_weekday = today.weekday()
+
+last_today = today-relativedelta(days=7)
+this_sunday = last_today+relativedelta(days=7-current_weekday-1)
+last_sunday = last_today+relativedelta(days=7-current_weekday-8)
+
+this_sunday_str = this_sunday.strftime("%Y%m%d")
+last_sunday_str = last_sunday.strftime("%Y%m%d")
 
 web_name = 'zeczec'
-file_path = f'./data/recently_{web_name}_{now_date}.csv'
+file_path = f'./data/recently_{web_name}_{this_sunday_str}.csv'
 
 domain_url = 'https://www.zeczec.com'
 
 @timer
 def crawler_zeczec_results(time_sleep):
     soup = get_soup(domain_url)
-    button_group = soup.select('.border-t >.container >.text-center.mb-16 >.button-group.mt-4')
+    button_group = soup.select('.container >.text-center.mb-16 >.button-group.mt-4')
 
     # 群眾集資
     page = int(button_group[0].select('.button.button-s')[-2].get_text())
@@ -35,7 +43,8 @@ def crawler_zeczec_results(time_sleep):
     p_page = int(button_group[1].select('.button.button-s')[-2].get_text())
     for i in range(1, p_page):
         pre_order_url = domain_url+'/'+f'?p_page={i}'
-        get_pre_order_info(pre_order_url, time_sleep)
+        get_pre_order_info(pre_order_url, time_sleep) # 這裡爬到最後會斷掉，要再修bug
+
     get_df_add_header_to_csv()
     data_sort()
     amount_limit()
@@ -72,9 +81,10 @@ def get_projects_info(projects_url, time_sleep):
     projects = soup.select('.text-lg.my-4')
     projects = projects[0].get_text() if projects else ''
 
-    proposer = soup.select('.flex >.font-bold.text-sm')
+    proposer = soup.select('.text-sm.text-gray-500 >.font-bold.text-zec-green')
     proposer = str(proposer[0].get_text()) if proposer else ''
-    proposer_url = soup.select('.flex >.font-bold.text-sm')
+
+    proposer_url = soup.select('.text-sm.text-gray-500 >.font-bold.text-zec-green')
     proposer_url = domain_url+proposer_url[0].get('href') if proposer else ''
                             
     achievement_rate = soup.select('.stroke')
@@ -88,7 +98,7 @@ def get_projects_info(projects_url, time_sleep):
     current_price = current_price[0].get_text().strip().split('\n')[0] if current_price else ''
     current_price = int(''.join(re.findall('\d*', current_price))) if current_price else ''# 如果要轉換純數字
 
-    spec = soup.select('.text-sm.text-neutral-600.my-4.leading-relaxed')
+    spec = soup.select('.text-sm.text-gray-500.my-4.leading-relaxed.tracking-wider')
     spec = spec[0].get_text().replace('\n', '')+',zeczec' if spec else ''
     
     number_of_sponsors = soup.select('.js-backers-count')
@@ -97,7 +107,7 @@ def get_projects_info(projects_url, time_sleep):
     remaining_time = soup.select('.js-time-left')
     remaining_time = remaining_time[0].get_text() if remaining_time else ''
     
-    group_period = soup.select('.mb-2.text-xs.leading-relaxed')
+    group_period = soup.select('h3.inline-block.text-gray-500.text-xs')
     group_period = group_period[0].get_text().replace('\n', '').replace('時程', '') if group_period else ''
             
     group_period_lists = group_period.split(' – ') if group_period else ''
@@ -106,7 +116,7 @@ def get_projects_info(projects_url, time_sleep):
     
     group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
     
-    df_file_path = f'./data/recently_{web_name}_{last_week_date}.csv'
+    df_file_path = f'./data/recently_{web_name}_{last_sunday_str}.csv'
     df_last_week_url_list = get_df_last_week_url_list(df_file_path)
     new_product = '✅' if projects_url not in df_last_week_url_list else ''
     
@@ -179,7 +189,7 @@ def get_projects_info_logging(projects_url, time_sleep): # 如果需要用log取
         
         group_period_end = group_period_lists[1]+':00' if len(group_period_lists) == 2 else ''
         
-        df_file_path = f'./data/recently_{web_name}_{last_week_date}.csv'
+        df_file_path = f'./data/recently_{web_name}_{last_sunday_str}.csv'
         df_last_week_url_list = get_df_last_week_url_list(df_file_path)
         new_product = '✅' if projects_url not in df_last_week_url_list else ''
         
@@ -225,15 +235,26 @@ def get_check_exist_list():
     return check_rows
 
 def get_soup(url, cookies=None):
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
-    }
-    resp = requests.session().get(url, headers=headers, cookies=cookies)
-    resp_results = resp.text
+    '''selenium 方法'''
+    options = webdriver.FirefoxOptions()
+    options.headless = True # 不開啟瀏覽器背景執行
+    # driver = webdriver.Firefox(executable_path='./path/geckodriver', options=options) # 使用 firefox 爬蟲
+    driver = webdriver.Firefox(options=options) # 使用 firefox 爬蟲
+    driver.get(url)
+    resp_results = driver.page_source
     soup = BeautifulSoup(resp_results, 'lxml')
-    if cookies:
-        time.sleep(3) # 如果cookies 有傳值進來的話，停頓秒數設置
     return soup
+
+    '''原本的 requests'''
+    # headers = {
+    #     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.79',
+    # }
+    # resp = requests.session().get(url, headers=headers, cookies=cookies)
+    # resp_results = resp.text
+    # soup = BeautifulSoup(resp_results, 'lxml')
+    # if cookies:
+    #     time.sleep(3) # 如果cookies 有傳值進來的話，停頓秒數設置
+    # return soup
 
 def get_cookies_soup(url):
     age_checked_for_list = ['', '14118', '12925', '10649', '13819', '14047']
@@ -267,7 +288,7 @@ def get_df_add_header_to_csv():
         'new_product',
     ]
     df = pd.read_csv(file_path, header=None)
-    df_temp = df[0:1][0].values
+    df_temp = df.iloc[0][0]
     if 'projects' in df_temp:
         df = pd.read_csv(file_path)
     if 'projects' not in df_temp:
@@ -276,11 +297,8 @@ def get_df_add_header_to_csv():
     df.to_csv(file_path, index=False)
 
 def data_sort():
-    now_date = datetime.now()
-    diff_date = datetime.strftime(now_date-relativedelta(days=30), '%Y-%m-%d')+' 23:59:59' # 取30天內開團的商品, 設定到 YYYY-mm-dd 23:59:59
+    diff_date = datetime.strftime(this_sunday-relativedelta(days=30), '%Y-%m-%d')+' 23:59:59' # 取30天內開團的商品, 設定到 YYYY-mm-dd 23:59:59
     diff_date = datetime.strptime(diff_date, '%Y-%m-%d %H:%M:%S')
-
-    now_date = datetime.strftime(now_date, '%Y%m%d')
 
     df = pd.read_csv(file_path)
 
@@ -306,18 +324,16 @@ def data_sort():
     limit_amount = 500000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
 
-    df_file_path = f'./data/data_sort_{web_name}_{last_week_date}.csv'
+    df_file_path = f'./data/data_sort_{web_name}_{last_sunday_str}.csv'
     df_last_week_url_list = get_df_last_week_url_list(df_file_path)
     df['新品入榜'] = np.where(~df['商品網址'].isin(df_last_week_url_list)==True, '✅', '')
     
     df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
-    df.to_csv(f'./data/data_sort_{web_name}_{now_date}.csv', mode='w', index=False)
+    df.to_csv(f'./data/data_sort_{web_name}_{this_sunday_str}.csv', mode='w', index=False)
 
 def amount_limit():
-    now_date = datetime.now()
-    diff_date = datetime.strftime(now_date, '%Y-%m-%d')+' 23:59:59' # 取爬蟲當天內還開團的商品, 設定到 YYYY-mm-dd 23:59:59
+    diff_date = datetime.strftime(this_sunday, '%Y-%m-%d')+' 23:59:59' # 取爬蟲當天內還開團的商品, 設定到 YYYY-mm-dd 23:59:59
     diff_date = datetime.strptime(diff_date, '%Y-%m-%d %H:%M:%S')
-    now_date = datetime.strftime(now_date, '%Y%m%d')
 
     df = pd.read_csv(file_path)
 
@@ -330,7 +346,7 @@ def amount_limit():
         '商品網址',
         '商品規格',
         '剩餘時間',
-        f'集資期間({now_date} 截止)',
+        f'集資期間({this_sunday_str} 截止)',
         '集資開始',
         '集資結束',
         '新品入榜',
@@ -342,12 +358,12 @@ def amount_limit():
     limit_amount = 5000000 # 限制多少金額才列出
     df = df[df['累積金額']>=limit_amount]
     
-    df_file_path = f'./data/amount_limit_{web_name}_{last_week_date}.csv'
+    df_file_path = f'./data/amount_limit_{web_name}_{last_sunday_str}.csv'
     df_last_week_url_list = get_df_last_week_url_list(df_file_path)
     df['新品入榜'] = np.where(~df['商品網址'].isin(df_last_week_url_list)==True, '✅', '')
 
     df = df.sort_values(by=['新品入榜', '累積金額'], ascending=[False, False])
-    df.to_csv(f'./data/amount_limit_{web_name}_{now_date}.csv', mode='w', index=False)
+    df.to_csv(f'./data/amount_limit_{web_name}_{this_sunday_str}.csv', mode='w', index=False)
 
 if __name__ == '__main__':    
     crawler_zeczec_results(time_sleep=9)
